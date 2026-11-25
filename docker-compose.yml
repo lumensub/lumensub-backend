@@ -1,0 +1,25 @@
+# Local development: Postgres and Redis only. Run the API and worker with npm.
+# Ports are bound to 127.0.0.1 so the databases are not reachable from your network.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lumensub
+      POSTGRES_PASSWORD: lumensub
+      POSTGRES_DB: lumensub
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumensub"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+
+volumes:
+  pgdata:
