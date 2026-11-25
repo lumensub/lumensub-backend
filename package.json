@@ -15,6 +15,8 @@
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate:prod": "node dist/db/migrate.js",
+    "keys:create": "tsx src/cli/create-api-key.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
