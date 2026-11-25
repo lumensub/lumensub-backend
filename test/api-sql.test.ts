@@ -97,6 +97,13 @@ describe('API routes against a migrated database', () => {
     expect(plan.json()).toMatchObject({ id: '1', merchant_address: MERCHANT });
     const subs = await app.inject({ url: `/v1/public/subscribers/${SUBSCRIBER}/subscriptions` });
     expect(subs.json().data).toHaveLength(3);
+    const payments = await app.inject({ url: '/v1/public/subscriptions/1/payments' });
+    expect(payments.json()).toEqual({
+      charges: [expect.objectContaining({ cycle: 2, amount: '5000000' })],
+      failures: [],
+      refunds: [],
+    });
+    expect((await app.inject({ url: '/v1/public/subscriptions/999/payments' })).statusCode).toBe(404);
   });
 
   it('creates, lists and retries webhook deliveries', async () => {

@@ -24,6 +24,22 @@ export const publicRoutes: FastifyPluginAsync<{ db: Queryable }> = async (app, {
   });
 
   app.get(
+    '/subscriptions/:id/payments',
+    { schema: { tags: ['public'], summary: 'Charges, failed charges and refunds of a subscription, for receipts' } },
+    async (req) => {
+      const { id } = parse(idParams, req.params);
+      const sub = await db.query('SELECT 1 FROM subscriptions WHERE id = $1', [id]);
+      if (!sub.rowCount) throw notFound('subscription');
+      const [charges, failures, refunds] = await Promise.all([
+        db.query('SELECT id, cycle, amount, ledger, tx_hash, charged_at FROM charges WHERE subscription_id = $1 ORDER BY id', [id]),
+        db.query('SELECT id, reason, status, ledger, failed_at FROM charge_failures WHERE subscription_id = $1 ORDER BY id', [id]),
+        db.query('SELECT id, amount, ledger, refunded_at FROM refunds WHERE subscription_id = $1 ORDER BY id', [id]),
+      ]);
+      return { charges: charges.rows, failures: failures.rows, refunds: refunds.rows };
+    },
+  );
+
+  app.get(
     '/subscribers/:address/subscriptions',
     { schema: { tags: ['public'], summary: "A wallet's subscriptions, for the subscriber portal" } },
     async (req) => {
