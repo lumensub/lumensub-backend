@@ -7,10 +7,12 @@ something happens to their plans or subscriptions.
 
 | Type | When |
 |---|---|
+| `merchant.updated` | The merchant registered or changed their payout address. |
 | `plan.created` | A plan was created on chain. |
+| `plan.updated` | A plan was switched on or off. `data.active` is the new value. |
 | `subscription.created` | Someone subscribed. |
 | `subscription.charged` | A billing cycle was paid. |
-| `subscription.charge_failed` | A charge failed. `data.status` says what the subscription is now. |
+| `subscription.charge_failed` | A charge failed. `data.reason` is `allowance` or `balance`; `data.status` says what the subscription is now. |
 | `subscription.paused` | The subscriber paused. |
 | `subscription.resumed` | The subscriber resumed. |
 | `subscription.cancelled` | Cancelled. `data.by` is the address that did it. |

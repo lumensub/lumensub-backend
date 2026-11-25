@@ -40,16 +40,20 @@ state.
 
 | Topic | Effect |
 |---|---|
+| `merchant` | Creates the merchant or updates its payout address. The data is the payout address. |
 | `plan_new` | Creates the merchant and plan. Calls `get_plan` for trial, max cycles and grace. |
-| `sub_new` | Creates the subscription. Calls `get_subscription` for status and next charge time. |
+| `plan_act` | Switches a plan on or off. Existing subscribers keep being billed either way. |
+| `sub_new` | Creates the subscription. Calls `get_subscription` for status and next charge time. Without a trial the contract charges the first cycle in the same call, so a `charged` event for cycle 1 follows straight after. |
 | `charged` | Records the charge; sets next charge time; status becomes `active`, or `completed` at max cycles. |
-| `chg_fail` | Records the failure; status becomes whatever the contract reported. |
+| `chg_fail` | Records the failure; status becomes whatever the contract reported (`past_due`, or `lapsed` once the grace period is over). `reason` is `allowance` or `balance`. |
 | `paused` / `resumed` | Status change. Resume re-reads the next charge time. |
 | `cancelled` | Status `cancelled`, remembers who cancelled. |
 | `plan_chg` | Moves the subscription to the new plan. |
 | `refunded` | Records the refund. |
 
-Topics it does not know are skipped. The cursor still moves past them.
+Topics it does not know are skipped, and so is `config`, which the contract publishes when the admin changes protocol settings. The cursor still moves past them.
+
+Statuses arrive as the `u32` the contract stores: 0 trialing, 1 active, 2 past due, 3 paused, 4 cancelled, 5 lapsed, 6 completed.
 
 ## Dead letters
 
