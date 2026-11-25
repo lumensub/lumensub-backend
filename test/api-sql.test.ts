@@ -133,7 +133,7 @@ describe('API routes against a migrated database', () => {
     chain.chargeResult = () => ({ txHash: 'tx', ok: false, error: 'insufficient allowance' });
     const keeper = new Keeper(db, chain, Keypair.random(), { intervalMs: 1_000, batchSize: 10 }, log);
     const result = await keeper.tick(new Date('2026-02-01T00:00:00Z'));
-    expect(result).toEqual({ checked: 2, submitted: 0, notDue: 1, failed: 1 });
+    expect(result).toEqual({ checked: 2, submitted: 0, notDue: 1, declined: 0, failed: 1 });
     const { rows } = await db.query<{ keeper_failures: number }>('SELECT keeper_failures FROM subscriptions WHERE id = 2');
     expect(rows[0]?.keeper_failures).toBe(1);
   });

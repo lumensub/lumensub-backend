@@ -18,6 +18,8 @@ export interface KeeperTickResult {
   checked: number;
   submitted: number;
   notDue: number;
+  /** Charges that landed but collected nothing because the subscriber could not pay. */
+  declined: number;
   failed: number;
 }
 
@@ -82,8 +84,22 @@ export class Keeper {
     return delayMs;
   }
 
+  /**
+   * A zero charge is either a failed payment or a period fully covered by credit.
+   * The subscription's status after the call tells them apart. If it cannot be read,
+   * treat it as declined: backing off is the cheaper mistake.
+   */
+  private async wasDeclined(subId: bigint): Promise<boolean> {
+    try {
+      const sub = await this.chain.getSubscription(subId);
+      return !sub || sub.status === 'past_due' || sub.status === 'lapsed';
+    } catch {
+      return true;
+    }
+  }
+
   async tick(now: Date = new Date()): Promise<KeeperTickResult> {
-    const result: KeeperTickResult = { checked: 0, submitted: 0, notDue: 0, failed: 0 };
+    const result: KeeperTickResult = { checked: 0, submitted: 0, notDue: 0, declined: 0, failed: 0 };
     for (const row of await this.dueSubscriptions(now)) {
       if (this.stopped) break;
       result.checked++;
@@ -101,7 +117,15 @@ export class Keeper {
           continue;
         }
         const charge = await this.chain.charge(this.keeper, subId);
-        if (charge.ok) {
+        if (charge.ok && charge.amount === 0n && (await this.wasDeclined(subId))) {
+          // The contract returned 0 and left the subscription past due (or lapsed).
+          // next_charge_at does not move on a failed charge, so without a backoff the
+          // keeper would pay fees to retry it every few ticks until the grace period ends.
+          result.declined++;
+          await this.record(row.id, attempt, 'declined', charge.txHash, null);
+          const retryInMs = await this.backOff(row.id, attempt);
+          this.log.info({ subId: row.id, attempt, retryInMs }, 'charge declined; subscriber could not pay');
+        } else if (charge.ok) {
           result.submitted++;
           await this.record(row.id, attempt, 'submitted', charge.txHash, null);
           // Hold off until the indexer has seen the charged event and moved next_charge_at.

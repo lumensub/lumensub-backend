@@ -20,7 +20,7 @@ describe('Keeper.tick', () => {
     const { db, chain, keeper } = setup([{ id: '1', keeper_failures: 0 }]);
     chain.due.add(1n);
     const result = await keeper.tick();
-    expect(result).toEqual({ checked: 1, submitted: 1, notDue: 0, failed: 0 });
+    expect(result).toEqual({ checked: 1, submitted: 1, notDue: 0, declined: 0, failed: 0 });
     expect(chain.charged).toEqual([1n]);
     const attempt = db.queries.find((q) => q.sql.startsWith('INSERT INTO keeper_attempts'));
     expect(attempt?.params).toEqual(['1', 1, 'submitted', 'tx-1', null]);
@@ -44,6 +44,40 @@ describe('Keeper.tick', () => {
     expect(Number(backoff?.params[2])).toBeGreaterThanOrEqual(120_000);
   });
 
+  it('backs off when charge returns 0 and the subscription is past due', async () => {
+    const { db, chain, keeper } = setup([{ id: '6', keeper_failures: 0 }]);
+    chain.due.add(6n);
+    chain.chargeResult = () => ({ txHash: 'tx-6', ok: true, amount: 0n });
+    chain.subscriptions.set(6n, {
+      planId: 1n,
+      subscriber: 'GSUB',
+      status: 'past_due',
+      cyclesCharged: 2,
+      nextChargeAt: new Date(0),
+    });
+    const result = await keeper.tick();
+    expect(result).toEqual({ checked: 1, submitted: 0, notDue: 0, declined: 1, failed: 0 });
+    const attempt = db.queries.find((q) => q.sql.startsWith('INSERT INTO keeper_attempts'));
+    expect(attempt?.params).toEqual(['6', 1, 'declined', 'tx-6', null]);
+    expect(db.queries.some((q) => q.sql.includes('keeper_failures = $2'))).toBe(true);
+  });
+
+  it('treats a zero charge covered by credit as a normal charge', async () => {
+    const { chain, keeper } = setup([{ id: '7', keeper_failures: 0 }]);
+    chain.due.add(7n);
+    chain.chargeResult = () => ({ txHash: 'tx-7', ok: true, amount: 0n });
+    chain.subscriptions.set(7n, {
+      planId: 1n,
+      subscriber: 'GSUB',
+      status: 'active',
+      cyclesCharged: 3,
+      nextChargeAt: new Date(0),
+    });
+    const result = await keeper.tick();
+    expect(result.submitted).toBe(1);
+    expect(result.declined).toBe(0);
+  });
+
   it('records thrown errors as failures without stopping the batch', async () => {
     const { chain, keeper } = setup([
       { id: '4', keeper_failures: 0 },
@@ -55,7 +89,7 @@ describe('Keeper.tick', () => {
       return { txHash: 'ok', ok: true };
     };
     const result = await keeper.tick();
-    expect(result).toEqual({ checked: 2, submitted: 1, notDue: 0, failed: 1 });
+    expect(result).toEqual({ checked: 2, submitted: 1, notDue: 0, declined: 0, failed: 1 });
   });
 });
 
