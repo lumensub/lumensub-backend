@@ -29,6 +29,12 @@ const schema = z.object({
   WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
   WEBHOOK_ALLOW_PRIVATE_TARGETS: bool.default('false'),
 
+  /** Comma-separated browser origins allowed to call the API, e.g. where lumensub-app runs. */
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:3000')
+    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean)),
+
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW: z.string().default('1 minute'),
 });

@@ -1,3 +1,4 @@
+import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -33,6 +34,11 @@ export interface ApiDeps {
   webhooks: { allowPrivateTargets: boolean; resolve?: Resolver };
   /** Turn off the Swagger UI, e.g. in tests. The JSON spec stays available. */
   docsUi?: boolean;
+  /**
+   * Browser origins allowed to call the API, such as the lumensub-app deployment.
+   * Empty means no cross-origin access; server-to-server calls are unaffected.
+   */
+  corsOrigins?: string[];
 }
 
 export function merchantOf(req: FastifyRequest): string {
@@ -58,6 +64,14 @@ export async function buildServer(deps: ApiDeps): Promise<FastifyInstance> {
     return sendError(reply, new ApiError(500, 'internal', 'something went wrong on our side'));
   });
   app.setNotFoundHandler((_req, reply) => sendError(reply, new ApiError(404, 'not_found', 'no such route')));
+
+  // The dashboard, checkout and portal call this API from the browser.
+  await app.register(cors, {
+    origin: deps.corsOrigins ?? [],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Api-Key'],
+    maxAge: 600,
+  });
 
   await app.register(swagger, {
     openapi: {

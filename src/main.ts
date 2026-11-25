@@ -38,6 +38,7 @@ const app = await buildServer({
   },
   rateLimit: { max: config.RATE_LIMIT_MAX, timeWindow: config.RATE_LIMIT_WINDOW, redis },
   webhooks: { allowPrivateTargets: config.WEBHOOK_ALLOW_PRIVATE_TARGETS },
+  corsOrigins: config.CORS_ORIGINS,
 });
 
 const shutdown = async (signal: string) => {

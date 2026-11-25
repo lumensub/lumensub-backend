@@ -34,11 +34,32 @@ async function make(respond?: Respond, readiness?: ReadinessReport) {
     rateLimit: { max: 1000, timeWindow: '1 minute' },
     webhooks: { allowPrivateTargets: false, resolve: async () => ['93.184.216.34'] },
     docsUi: false,
+    corsOrigins: ['http://localhost:3000'],
   });
   return { app, db };
 }
 
 const auth = { authorization: `Bearer ${key}` };
+
+describe('CORS', () => {
+  it('lets the configured app origin call the API from a browser', async () => {
+    const { app } = await make();
+    const preflight = await app.inject({
+      method: 'OPTIONS',
+      url: '/v1/plans',
+      headers: { origin: 'http://localhost:3000', 'access-control-request-method': 'GET', 'access-control-request-headers': 'authorization' },
+    });
+    expect(preflight.statusCode).toBe(204);
+    expect(preflight.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+    expect(String(preflight.headers['access-control-allow-headers'])).toMatch(/Authorization/);
+  });
+
+  it('gives other origins no CORS headers', async () => {
+    const { app } = await make();
+    const res = await app.inject({ url: '/health', headers: { origin: 'https://evil.example' } });
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
 
 describe('API', () => {
   it('answers /health without auth', async () => {
