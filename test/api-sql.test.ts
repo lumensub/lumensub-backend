@@ -1,6 +1,7 @@
 import { Keypair } from '@stellar/stellar-sdk';
 import { pino } from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { revenueByDay } from '../src/analytics/queries.js';
 import { createApiKey } from '../src/api/keys.js';
 import { buildServer } from '../src/api/server.js';
 import type { Queryable } from '../src/db/pool.js';
@@ -90,6 +91,15 @@ describe('API routes against a migrated database', () => {
     const res = await app.inject({ url: '/v1/analytics/summary', headers: auth });
     expect(res.statusCode).toBe(200);
     expect(res.json().mrr).toEqual({ CUSDC: '15000000' });
+    const revenue = await app.inject({ url: '/v1/analytics/revenue', headers: auth });
+    expect(revenue.statusCode).toBe(200);
+    expect(Array.isArray(revenue.json().data)).toBe(true);
+    await expect(revenueByDay(db, MERCHANT, 30, new Date('2026-01-10T00:00:00Z'))).resolves.toEqual([
+      { date: '2026-01-01', token: 'CUSDC', charges: 1, gross: '5000000' },
+    ]);
+    await expect(revenueByDay(db, MERCHANT, 30, new Date('2026-03-01T00:00:00Z'))).resolves.toEqual([]);
+    const bad = await app.inject({ url: '/v1/analytics/revenue?days=0', headers: auth });
+    expect(bad.statusCode).toBe(400);
   });
 
   it('serves public routes', async () => {

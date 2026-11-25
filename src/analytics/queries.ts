@@ -62,3 +62,27 @@ export async function merchantSummary(db: Queryable, merchant: string, now: Date
     revenue30d: revenue.rows.map((r) => ({ ...r, charges: Number(r.charges) })),
   };
 }
+
+export interface RevenueDay {
+  /** UTC day, YYYY-MM-DD. */
+  date: string;
+  token: string;
+  charges: number;
+  gross: string;
+}
+
+/**
+ * Successful charges per UTC day and token over the last `days` days. Days with no
+ * charges are left out; the caller fills gaps if it wants a continuous series.
+ */
+export async function revenueByDay(db: Queryable, merchant: string, days: number, now: Date = new Date()): Promise<RevenueDay[]> {
+  const { rows } = await db.query<RevenueDay>(
+    `SELECT to_char(c.charged_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date, p.token,
+            COUNT(*)::int AS charges, SUM(c.amount)::text AS gross
+     FROM charges c JOIN subscriptions s ON s.id = c.subscription_id JOIN plans p ON p.id = s.plan_id
+     WHERE p.merchant_address = $1 AND c.charged_at >= $2::timestamptz - $3::int * interval '1 day'
+     GROUP BY 1, 2 ORDER BY 1, 2`,
+    [merchant, now, days],
+  );
+  return rows;
+}
