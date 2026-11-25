@@ -63,6 +63,26 @@ export async function applyEvent(db: Queryable, event: DomainEvent, extra: Enric
   if (logged.rowCount === 0) return { applied: false, merchant: null };
 
   switch (event.type) {
+    case 'merchant': {
+      // Sent on registration and again whenever the merchant changes their payout address.
+      await db.query(
+        `INSERT INTO merchants (address, payout_address, registered_ledger) VALUES ($1, $2, $3)
+         ON CONFLICT (address) DO UPDATE SET
+           payout_address = EXCLUDED.payout_address,
+           registered_ledger = COALESCE(merchants.registered_ledger, EXCLUDED.registered_ledger)`,
+        [event.merchant, event.payout, ledger],
+      );
+      return { applied: true, merchant: event.merchant };
+    }
+
+    case 'plan_act': {
+      const updated = await db.query<{ merchant_address: string }>(
+        'UPDATE plans SET active = $2 WHERE id = $1 RETURNING merchant_address',
+        [event.planId.toString(), event.active],
+      );
+      return { applied: true, merchant: updated.rows[0]?.merchant_address ?? null };
+    }
+
     case 'plan_new': {
       await upsertPlan(
         db,

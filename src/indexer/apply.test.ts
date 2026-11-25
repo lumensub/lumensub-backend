@@ -33,6 +33,22 @@ describe('applyEvent', () => {
     ]);
   });
 
+  it('stores the payout address from a merchant event', async () => {
+    const db = fakeDb();
+    const result = await applyEvent(db, { ...meta, type: 'merchant', merchant: 'GMERCHANT', payout: 'GPAYOUT' });
+    expect(result).toEqual({ applied: true, merchant: 'GMERCHANT' });
+    const upsert = db.queries.find((q) => q.sql.startsWith('INSERT INTO merchants'));
+    expect(upsert?.sql).toContain('payout_address = EXCLUDED.payout_address');
+    expect(upsert?.params).toEqual(['GMERCHANT', 'GPAYOUT', 100]);
+  });
+
+  it('switches a plan off for plan_act', async () => {
+    const db = fakeDb((sql) => (sql.startsWith('UPDATE plans') ? { rows: [{ merchant_address: 'GM' }] } : undefined));
+    const result = await applyEvent(db, { ...meta, type: 'plan_act', planId: 4n, active: false });
+    expect(result).toEqual({ applied: true, merchant: 'GM' });
+    expect(db.queries.find((q) => q.sql.startsWith('UPDATE plans'))?.params).toEqual(['4', false]);
+  });
+
   it('records a charge and updates the subscription only if the event is newer', async () => {
     const db = fakeDb((sql) =>
       sql.startsWith('SELECT p.merchant_address') ? { rows: [{ merchant_address: 'GM' }] } : undefined,
