@@ -7,6 +7,14 @@ export interface RecordedQuery {
 
 type Responder = (sql: string, params: unknown[]) => { rows?: unknown[]; rowCount?: number } | undefined;
 
+/** fakeDb plus connect(), so code that opens transactions can run against it. */
+export function fakePool(respond: Responder = () => undefined) {
+  const db = fakeDb(respond);
+  return Object.assign(db, {
+    connect: async () => ({ query: db.query, release: () => undefined }),
+  }) as unknown as import('../src/db/pool.js').Pool & { queries: RecordedQuery[] };
+}
+
 /**
  * A stand-in for pg that records every query and answers with whatever the
  * responder returns. Enough to test the SQL a function issues without a database.
