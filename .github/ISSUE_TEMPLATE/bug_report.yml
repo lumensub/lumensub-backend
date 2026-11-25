@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in the backend does not behave the way it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce
+      description: Requests, events or config needed to see the problem. Smaller is better.
+      placeholder: |
+        1. Start the worker with ...
+        2. Call GET /v1/...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Indexer
+        - Keeper
+        - API
+        - Webhooks
+        - Analytics
+        - Migrations / database
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      placeholder: e.g. 3f2c1a9
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log lines. Remove API keys, webhook secrets and keeper seeds first.
+      render: text
