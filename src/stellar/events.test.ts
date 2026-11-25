@@ -24,9 +24,9 @@ describe('mapEvent', () => {
     });
   });
 
-  it('maps a charge failure with a vec-encoded status', () => {
-    const event = mapEvent(meta, ['chg_fail', 2n], { reason: 'insufficient_allowance', status: ['PastDue'] });
-    expect(event).toMatchObject({ type: 'chg_fail', status: 'past_due', reason: 'insufficient_allowance' });
+  it('maps a charge failure with the u32 status the contract publishes', () => {
+    const event = mapEvent(meta, ['chg_fail', 2n], { reason: 'allowance', status: 2 });
+    expect(event).toMatchObject({ type: 'chg_fail', status: 'past_due', reason: 'allowance' });
   });
 
   it('maps pause and resume without a body', () => {

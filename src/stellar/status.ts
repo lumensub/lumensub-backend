@@ -27,10 +27,16 @@ const fromContract: Record<string, SubscriptionStatus> = {
 };
 
 /**
- * The contract's Status is a unit enum. Depending on how it was decoded it shows up
- * as "PastDue" or as ["PastDue"] (a Vec holding one Symbol). Accept both.
+ * The contract stores SubscriptionStatus as a u32 (Trialing = 0 through Completed = 6),
+ * in the same order as SUBSCRIPTION_STATUSES. The variant name, bare or wrapped in a
+ * one-element array, is still accepted so fixtures written by hand keep working.
  */
 export function parseContractStatus(value: unknown): SubscriptionStatus {
+  if (typeof value === 'number' || typeof value === 'bigint') {
+    const status = SUBSCRIPTION_STATUSES[Number(value)];
+    if (status && Number.isInteger(Number(value))) return status;
+    throw new Error(`unknown subscription status: ${String(value)}`);
+  }
   const name = Array.isArray(value) ? value[0] : value;
   const status = typeof name === 'string' ? fromContract[name] : undefined;
   if (!status) throw new Error(`unknown subscription status: ${JSON.stringify(value)}`);
