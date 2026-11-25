@@ -113,7 +113,7 @@ export class WebhookDispatcher {
         await client.query(
           `UPDATE webhook_deliveries SET
              status = $2, attempts = $3,
-             next_attempt_at = now() + ($4 || ' milliseconds')::interval,
+             next_attempt_at = now() + $4::bigint * interval '1 millisecond',
              last_status_code = $5, last_error = $6, updated_at = now()
            WHERE id = $1`,
           [

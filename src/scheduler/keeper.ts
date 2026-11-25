@@ -76,7 +76,7 @@ export class Keeper {
   private async backOff(subId: string, failures: number) {
     const delayMs = keeperRetryDelay(failures, this.opts);
     await this.db.query(
-      `UPDATE subscriptions SET keeper_failures = $2, keeper_retry_at = now() + ($3 || ' milliseconds')::interval WHERE id = $1`,
+      `UPDATE subscriptions SET keeper_failures = $2, keeper_retry_at = now() + $3::bigint * interval '1 millisecond' WHERE id = $1`,
       [subId, failures, String(delayMs)],
     );
     return delayMs;
@@ -95,7 +95,7 @@ export class Keeper {
           result.notDue++;
           await this.record(row.id, attempt, 'not_due', null, null);
           await this.db.query(
-            `UPDATE subscriptions SET keeper_retry_at = now() + ($2 || ' milliseconds')::interval WHERE id = $1`,
+            `UPDATE subscriptions SET keeper_retry_at = now() + $2::bigint * interval '1 millisecond' WHERE id = $1`,
             [row.id, String(this.opts.intervalMs)],
           );
           continue;
@@ -106,7 +106,7 @@ export class Keeper {
           await this.record(row.id, attempt, 'submitted', charge.txHash, null);
           // Hold off until the indexer has seen the charged event and moved next_charge_at.
           await this.db.query(
-            `UPDATE subscriptions SET keeper_retry_at = now() + ($2 || ' milliseconds')::interval WHERE id = $1`,
+            `UPDATE subscriptions SET keeper_retry_at = now() + $2::bigint * interval '1 millisecond' WHERE id = $1`,
             [row.id, String(this.opts.intervalMs * 4)],
           );
         } else {
