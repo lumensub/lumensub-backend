@@ -4,6 +4,7 @@ import { withTransaction, type Pool, type Queryable } from '../db/pool.js';
 import { backoffDelay, sleep } from '../lib/backoff.js';
 import type { SubscriptionChain } from '../stellar/chain.js';
 import { decodeEvent, EventDecodeError, toJson, type DomainEvent, type RawContractEvent } from '../stellar/events.js';
+import { notificationFor, type Notifier } from '../notifications/notifier.js';
 import { enqueueWebhooks } from '../webhooks/enqueue.js';
 import { applyEvent, type Enrichment } from './apply.js';
 import { advanceCursor, startLedger, unseenEvents, type Cursor } from './cursor.js';
@@ -67,7 +68,15 @@ export class Indexer {
     private readonly chain: SubscriptionChain,
     private readonly opts: IndexerOptions,
     private readonly log: Logger,
+    private readonly notifier?: Notifier,
   ) {}
+
+  /** Notifications are best effort and sent after the commit, so they never block indexing. */
+  private notify(event: DomainEvent, merchant: string): void {
+    const n = this.notifier ? notificationFor(event, merchant) : null;
+    if (!n || !this.notifier) return;
+    this.notifier.send(n).catch((err) => this.log.warn({ err, kind: n.kind }, 'notification failed'));
+  }
 
   /** Fetches the on-chain state some events need, before opening a transaction. */
   private async enrich(db: Queryable, event: DomainEvent): Promise<Enrichment> {
@@ -137,18 +146,22 @@ export class Indexer {
       }
 
       const extra = event ? await this.enrich(this.pool, event) : {};
-      await withTransaction(this.pool, async (tx) => {
+      const merchant = await withTransaction(this.pool, async (tx) => {
+        let owner: string | null = null;
         if (event) {
           const result = await applyEvent(tx, event, extra);
           if (result.applied) {
             applied++;
-            if (result.merchant) await enqueueWebhooks(tx, result.merchant, event);
+            owner = result.merchant;
+            if (owner) await enqueueWebhooks(tx, owner, event);
             this.log.debug({ eventId: event.id, type: event.type, data: toJson(event) }, 'applied event');
           }
         }
         next = advanceCursor(next, [raw]);
         if (next) await saveCursor(tx, next);
+        return owner;
       });
+      if (event && merchant) this.notify(event, merchant);
     }
 
     // A page shorter than the limit means everything up to latestLedger has been
