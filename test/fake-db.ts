@@ -1,4 +1,4 @@
-import type { Queryable } from '../src/db/pool.js';
+import type { Pool, Queryable } from '../src/db/pool.js';
 
 export interface RecordedQuery {
   sql: string;
@@ -12,7 +12,7 @@ export function fakePool(respond: Responder = () => undefined) {
   const db = fakeDb(respond);
   return Object.assign(db, {
     connect: async () => ({ query: db.query, release: () => undefined }),
-  }) as unknown as import('../src/db/pool.js').Pool & { queries: RecordedQuery[] };
+  }) as unknown as Pool & { queries: RecordedQuery[] };
 }
 
 /**
