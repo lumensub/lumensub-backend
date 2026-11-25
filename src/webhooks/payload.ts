@@ -1,7 +1,9 @@
 import { toJson, type DomainEvent, type DomainEventType } from '../stellar/events.js';
 
 export const WEBHOOK_EVENT_TYPES = {
+  merchant: 'merchant.updated',
   plan_new: 'plan.created',
+  plan_act: 'plan.updated',
   sub_new: 'subscription.created',
   charged: 'subscription.charged',
   chg_fail: 'subscription.charge_failed',

@@ -11,7 +11,9 @@ export interface EventMeta {
 
 export type DomainEvent = EventMeta &
   (
+    | { type: 'merchant'; merchant: string; payout: string }
     | { type: 'plan_new'; planId: bigint; merchant: string; token: string; amount: bigint; periodSecs: bigint }
+    | { type: 'plan_act'; planId: bigint; active: boolean }
     | { type: 'sub_new'; subId: bigint; planId: bigint; subscriber: string }
     | {
         type: 'charged';
@@ -32,8 +34,14 @@ export type DomainEvent = EventMeta &
 
 export type DomainEventType = DomainEvent['type'];
 
+/**
+ * Topics this service indexes. The contract also publishes `config` when the admin
+ * changes protocol settings; nothing here reads it, so it is skipped.
+ */
 export const EVENT_TOPICS: readonly DomainEventType[] = [
+  'merchant',
   'plan_new',
+  'plan_act',
   'sub_new',
   'charged',
   'chg_fail',
@@ -83,6 +91,12 @@ export function mapEvent(meta: EventMeta, topics: unknown[], body: unknown): Dom
   try {
     const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
     switch (name as DomainEventType) {
+      case 'merchant':
+        // Topics are (merchant, merchant address); the data is the payout address.
+        return { ...meta, type: 'merchant', merchant: str(id, 'merchant'), payout: str(body, 'payout') };
+      case 'plan_act':
+        if (typeof body !== 'boolean') throw new Error('active is not a boolean');
+        return { ...meta, type: 'plan_act', planId: big(id, 'plan_id'), active: body };
       case 'plan_new':
         return {
           ...meta,

@@ -34,6 +34,20 @@ describe('mapEvent', () => {
     expect(mapEvent(meta, ['resumed', 4n], undefined)).toMatchObject({ type: 'resumed', subId: 4n });
   });
 
+  it('maps a merchant registration, whose data is the payout address', () => {
+    const payout = Keypair.random().publicKey();
+    expect(mapEvent(meta, ['merchant', merchant], payout)).toMatchObject({ type: 'merchant', merchant, payout });
+  });
+
+  it('maps a plan being switched off or on', () => {
+    expect(mapEvent(meta, ['plan_act', 5n], false)).toMatchObject({ type: 'plan_act', planId: 5n, active: false });
+    expect(() => mapEvent(meta, ['plan_act', 5n], 'yes')).toThrow(EventDecodeError);
+  });
+
+  it('skips the config event', () => {
+    expect(mapEvent(meta, ['config'], { fee_bps: 100 })).toBeNull();
+  });
+
   it('ignores topics it does not know', () => {
     expect(mapEvent(meta, ['upgraded'], {})).toBeNull();
     expect(mapEvent(meta, [42], {})).toBeNull();
