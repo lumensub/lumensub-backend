@@ -50,7 +50,8 @@ Lines worth alerting on:
 | `RPC no longer has the cursor ledger` | The indexer fell further behind than the RPC's history. Events were missed. |
 | `could not decode event; moved to dead letters` | Contract and backend disagree about an event. |
 | `indexer poll failed` (repeating) | RPC or database trouble. The indexer backs off up to 5 minutes. |
-| `charge failed` at a high rate | Often subscribers with exhausted allowances. Also check the keeper's balance. |
+| `charge failed` at a high rate | The transaction did not land. Check the keeper's XLM balance and the RPC. |
+| `charge declined` | The subscriber could not pay. Expected now and then; the keeper backs off and the subscription lapses after its grace period. |
 
 ## Useful queries
 

@@ -54,6 +54,14 @@ moves on. The `charged` or `chg_fail` event comes back through the indexer like
 everything else. This keeps one write path for subscription state, which makes
 the read model easy to rebuild: drop the tables, reset the cursor, re-index.
 
+A failed payment is not a failed transaction. When the subscriber's allowance or
+balance is short, `charge()` succeeds, returns 0, publishes `chg_fail` and leaves
+the subscription past due without moving its next charge time. The keeper reads
+the return value, and when it is 0 and the subscription is now past due or
+lapsed, it records the attempt as `declined` and backs off exponentially, the
+same as for an error. A 0 can also mean plan-change credit covered the whole
+period; in that case the subscription is still active and nothing is held back.
+
 Before charging, the keeper also asks the contract `is_due()`. The read model
 can trail the chain by a few ledgers, and a charge that the contract rejects
 still costs the keeper a fee.
