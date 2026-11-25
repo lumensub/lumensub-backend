@@ -190,15 +190,16 @@ npm run keys:create -- GABC...YOUR_MERCHANT_ADDRESS laptop
 curl -H "Authorization: Bearer lsk_3f9a..." http://localhost:8080/v1/merchant
 ```
 
-`npm test` runs 140 tests, including SQL tests that apply every migration to PGlite (Postgres
+`npm test` runs 142 tests, including SQL tests that apply every migration to PGlite (Postgres
 compiled to WebAssembly), so you don't need Docker for them. CI runs lint, typecheck,
 tests, the build, and the migrations against a real Postgres 16.
 
 Every environment variable is validated at startup, and a bad value stops the process with
 its name. The full list is in [.env.example](.env.example); the ones you'll touch are
 `DATABASE_URL`, `SUBSCRIPTION_CONTRACT_ID`, `STELLAR_RPC_URL`, `STELLAR_NETWORK_PASSPHRASE`,
-`KEEPER_ENABLED` and `KEEPER_SECRET`. Leave `WEBHOOK_ALLOW_PRIVATE_TARGETS` off outside local
-development.
+`KEEPER_ENABLED`, `KEEPER_SECRET`, and `CORS_ORIGINS`, which must include wherever
+lumensub-app runs (it defaults to `http://localhost:3000`). Leave
+`WEBHOOK_ALLOW_PRIVATE_TARGETS` off outside local development.
 
 More detail: [architecture](docs/architecture.md), [API](docs/api.md),
 [webhooks, with verification code for Node and Python](docs/webhooks.md),
