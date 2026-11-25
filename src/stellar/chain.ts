@@ -38,7 +38,14 @@ export interface OnChainSubscription {
 
 export interface ChargeResult {
   txHash: string;
+  /** The transaction landed. A landed charge can still have collected nothing; see amount. */
   ok: boolean;
+  /**
+   * What charge() returned: the amount taken from the subscriber. Zero means the
+   * subscriber could not pay (the contract publishes chg_fail) or plan-change credit
+   * covered the whole period (it publishes charged).
+   */
+  amount?: bigint;
   error?: string;
 }
 
@@ -167,7 +174,10 @@ export class SorobanChain implements SubscriptionChain {
     const deadline = Date.now() + (this.opts.confirmTimeoutMs ?? 30_000);
     while (Date.now() < deadline) {
       const got = await this.server.getTransaction(sent.hash);
-      if (got.status === rpc.Api.GetTransactionStatus.SUCCESS) return { txHash: sent.hash, ok: true };
+      if (got.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+        const amount = got.returnValue ? BigInt(scValToNative(got.returnValue) as bigint) : undefined;
+        return { txHash: sent.hash, ok: true, amount };
+      }
       if (got.status === rpc.Api.GetTransactionStatus.FAILED) {
         return { txHash: sent.hash, ok: false, error: 'transaction failed on chain' };
       }
