@@ -29,9 +29,13 @@ once, in the response that creates it.
 
 ## Public routes
 
-`/v1/public/plans/:id` and `/v1/public/subscribers/:address/subscriptions` need
-no key. They exist for the hosted checkout page and the subscriber portal, and
-return only data that is already public on chain.
+Three routes need no key. They exist for the hosted checkout page and the
+subscriber portal, and return only data that is already public on chain:
+
+- `GET /v1/public/plans/:id`: price and terms of one plan, with the merchant's display name.
+- `GET /v1/public/subscribers/:address/subscriptions`: every subscription a wallet holds.
+- `GET /v1/public/subscriptions/:id/payments`: `{ charges, failures, refunds }` for one
+  subscription, which the portal turns into receipts.
 
 ## Conventions
 
@@ -74,6 +78,7 @@ Every error has the same shape:
 | GET | `/v1/charges` | All charges, filter by `from` / `to` |
 | GET | `/v1/refunds` | All refunds |
 | GET | `/v1/analytics/summary` | MRR per token, counts by status, 30-day churn and revenue |
+| GET | `/v1/analytics/revenue` | Charges per UTC day and token; `days` from 1 to 365, default 30 |
 | GET / POST | `/v1/webhook-endpoints` | List / create |
 | DELETE | `/v1/webhook-endpoints/:id` | Disable |
 | GET | `/v1/webhook-endpoints/:id/deliveries` | Last 100 deliveries |
